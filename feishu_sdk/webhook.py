@@ -13,11 +13,13 @@ class WebhookHandler:
     Handles Feishu webhook events with standard URL verification and message processing
     """
 
-    def __init__(self, app: Optional[Flask] = None, endpoint: str = "/webhook"):
+    def __init__(self, app: Optional[Flask] = None, endpoint: str = "/webhook",
+                 verification_token: Optional[str] = None):
         self.app = app
         self.endpoint = endpoint
         self.message_handlers = {}
         self.event_handlers = {}
+        self.verification_token = verification_token
 
         if app:
             self.init_app(app)
@@ -52,6 +54,15 @@ class WebhookHandler:
         # Handle URL verification
         if "type" in req_data and req_data["type"] == "url_verification":
             return jsonify({"challenge": req_data["challenge"]})
+
+        # Verify token if configured
+        if self.verification_token:
+            token = None
+            header = req_data.get("header")
+            if header:
+                token = header.get("token")
+            if token != self.verification_token:
+                return jsonify({"error": "Invalid verification token"}), 403
 
         # Handle events
         try:
